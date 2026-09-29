@@ -49,6 +49,7 @@ jobs:
             -dname "CN=E-Prime GPT, OU=E-Prime, O=E-Prime GPT, L=Unknown, ST=Unknown, C=NG"
 
       - name: Build signed release APK
+        working-directory: release
         env:
           ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/eprime-release.keystore
           ANDROID_KEYSTORE_PASSWORD: eprime-temp-store
@@ -61,6 +62,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: E-Prime-GPT-release-apk
-          path: app/build/outputs/apk/release/*.apk
+          path: release/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
           retention-days: 30
