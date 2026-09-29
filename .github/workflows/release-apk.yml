@@ -35,6 +35,21 @@ jobs:
         run: |
           sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
+      - name: Find Android project
+        run: |
+          PROJECT_DIR=$(find . -type f \( -name "settings.gradle" -o -name "settings.gradle.kts" \) -print -quit)
+
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "ERROR: No Gradle settings file was found."
+            echo "Repository contents:"
+            find . -maxdepth 4 -type f | sort
+            exit 1
+          fi
+
+          PROJECT_DIR=$(dirname "$PROJECT_DIR")
+          echo "Android project found in: $PROJECT_DIR"
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
       - name: Generate temporary signing key
         run: |
           keytool -genkeypair -v \
@@ -49,7 +64,7 @@ jobs:
             -dname "CN=E-Prime GPT, OU=E-Prime, O=E-Prime GPT, L=Unknown, ST=Unknown, C=NG"
 
       - name: Build signed release APK
-        working-directory: release
+        working-directory: ${{ env.PROJECT_DIR }}
         env:
           ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/eprime-release.keystore
           ANDROID_KEYSTORE_PASSWORD: eprime-temp-store
@@ -58,10 +73,15 @@ jobs:
         run: |
           gradle --no-daemon clean assembleRelease
 
+      - name: Find APK
+        run: |
+          echo "Searching for APK..."
+          find . -type f -name "*.apk" -print
+
       - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
           name: E-Prime-GPT-release-apk
-          path: release/app/build/outputs/apk/release/*.apk
+          path: '**/app/build/outputs/apk/release/*.apk'
           if-no-files-found: error
           retention-days: 30
