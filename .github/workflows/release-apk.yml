@@ -1,0 +1,66 @@
+name: Build signed E-Prime GPT APK
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Install Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install Android platform and build tools
+        run: |
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Generate temporary signing key
+        run: |
+          keytool -genkeypair -v \
+            -keystore "$RUNNER_TEMP/eprime-release.keystore" \
+            -storetype JKS \
+            -storepass "eprime-temp-store" \
+            -alias "eprime-gpt" \
+            -keypass "eprime-temp-key" \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 3650 \
+            -dname "CN=E-Prime GPT, OU=E-Prime, O=E-Prime GPT, L=Unknown, ST=Unknown, C=NG"
+
+      - name: Build signed release APK
+        env:
+          ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/eprime-release.keystore
+          ANDROID_KEYSTORE_PASSWORD: eprime-temp-store
+          ANDROID_KEY_ALIAS: eprime-gpt
+          ANDROID_KEY_PASSWORD: eprime-temp-key
+        run: |
+          gradle --no-daemon clean assembleRelease
+
+      - name: Upload signed APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: E-Prime-GPT-release-apk
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 30
