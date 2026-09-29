@@ -35,19 +35,27 @@ jobs:
         run: |
           sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
+      - name: Extract Android project
+        run: |
+          unzip -q "EPrimeGPT-Android-GitHub-Pages.zip" -d android-project
+
+          echo "Extracted project contents:"
+          find android-project -maxdepth 4 -type f | sort
+
       - name: Find Android project
         run: |
-          PROJECT_DIR=$(find . -type f \( -name "settings.gradle" -o -name "settings.gradle.kts" \) -print -quit)
+          PROJECT_DIR=$(find android-project -type f \( -name "settings.gradle" -o -name "settings.gradle.kts" \) -print -quit)
 
           if [ -z "$PROJECT_DIR" ]; then
-            echo "ERROR: No Gradle settings file was found."
-            echo "Repository contents:"
-            find . -maxdepth 4 -type f | sort
+            echo "ERROR: No Gradle settings file was found after extracting the ZIP."
             exit 1
           fi
 
           PROJECT_DIR=$(dirname "$PROJECT_DIR")
-          echo "Android project found in: $PROJECT_DIR"
+
+          echo "Android project found in:"
+          echo "$PROJECT_DIR"
+
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
       - name: Generate temporary signing key
@@ -76,12 +84,12 @@ jobs:
       - name: Find APK
         run: |
           echo "Searching for APK..."
-          find . -type f -name "*.apk" -print
+          find android-project -type f -name "*.apk" -print
 
       - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
           name: E-Prime-GPT-release-apk
-          path: '**/app/build/outputs/apk/release/*.apk'
+          path: android-project/**/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
           retention-days: 30
